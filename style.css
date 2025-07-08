@@ -1,0 +1,155 @@
+/* --- ОБЩИЕ СТИЛИ --- */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background-color: #f4f7f9;
+    color: #333;
+    margin: 0;
+    padding: 20px;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+.container {
+    max-width: 900px;
+    margin: 0 auto;
+    background-color: #fff;
+    padding: 20px 30px 30px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    transition: background-color 0.3s;
+}
+
+h1 {
+    color: #1a2c42;
+    border-bottom: 2px solid #e0e0e0;
+    padding-bottom: 10px;
+    margin-top: 0;
+}
+
+h4 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: #444;
+}
+
+/* --- ЭЛЕМЕНТЫ УПРАВЛЕНИЯ --- */
+.controls {
+    margin-bottom: 25px;
+}
+
+#searchInput {
+    width: 100%;
+    padding: 12px 15px;
+    font-size: 16px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    box-sizing: border-box;
+    margin-bottom: 15px;
+}
+
+.filters {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.filter-btn {
+    padding: 10px 20px;
+    border: 1px solid #007bff;
+    background-color: #fff;
+    color: #007bff;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.filter-btn:hover {
+    background-color: #e6f2ff;
+}
+
+.filter-btn.active {
+    background-color: #007bff;
+    color: #fff;
+}
+
+/* --- КАРТОЧКА ВОЗРАЖЕНИЯ --- */
+.item-card {
+    background-color: #fdfdfd;
+    border: 1px solid #e9e9e9;
+    border-radius: 6px;
+    padding: 20px;
+    margin-bottom: 15px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+}
+
+.item-card h3 {
+    margin-top: 0;
+    color: #0056b3;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.item-card .category-badge {
+    font-size: 12px;
+    padding: 5px 10px;
+    border-radius: 12px;
+    background-color: #e0e0e0;
+    color: #555;
+    font-weight: normal;
+    white-space: nowrap;
+}
+
+.item-card p {
+    line-height: 1.6;
+}
+
+/* --- ИНТЕРАКТИВНЫЕ ЭЛЕМЕНТЫ --- */
+.user-interaction {
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid #e0e0e0;
+}
+
+.public-feedback {
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid #e0e0e0;
+}
+
+.rating-stars {
+    margin-bottom: 15px;
+    cursor: pointer;
+}
+
+.star {
+    font-size: 28px;
+    color: #ccc;
+    transition: color 0.2s;
+    margin-right: 2px;
+}
+
+.star.small {
+    font-size: 16px;
+}
+
+.star:hover {
+    color: #f8d64e;
+}
+
+.star.filled {
+    color: #f5c518;
+}
+
+.average-rating {
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 15px;
+}
+
+.note-input {
+    width: 100%;
+    min-height: 80px;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
