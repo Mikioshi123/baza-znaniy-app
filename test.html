@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Test Page</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+
+<body>
+    <h1>Test Page</h1>
+    <button id="testBtn">Call Function</button>
+    <pre id="response"></pre>
+
+    <script>
+        const SUPABASE_URL = 'https://<ВАШ_PROJECT_ID>.supabase.co';
+        const SUPABASE_ANON_KEY = 'ВАШ_SUPABASE_ANON_KEY';
+
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const responseEl = document.getElementById('response');
+
+        document.getElementById('testBtn').addEventListener('click', async () => {
+            responseEl.textContent = 'Calling function...';
+            try {
+                const { data, error } = await supabase.functions.invoke('test-hello');
+                if (error) throw error;
+                responseEl.textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                responseEl.textContent = 'Error: ' + error.message;
+            }
+        });
+    </script>
+</body>
+
+</html>
