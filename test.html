@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Test Page</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+
+<body>
+    <h1>Test Page</h1>
+    <button id="testBtn">Call Function</button>
+    <pre id="response"></pre>
+
+    <script>
+        const SUPABASE_URL = 'https://adyqqfkwgdzanpgsvzgl.supabase.co';
+        const SUPABASE_ANON_KEY = 'ВeyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFkeXFxZmt3Z2R6YW5wZ3N2emdsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE1NTM1NTgsImV4cCI6MjA2NzEyOTU1OH0.rfFekXWr933GcjA2JZQ2gvUObS3zuzctDQZvZfopP2g';
+
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const responseEl = document.getElementById('response');
+
+        document.getElementById('testBtn').addEventListener('click', async () => {
+            responseEl.textContent = 'Calling function...';
+            try {
+                const { data, error } = await supabase.functions.invoke('test-hello');
+                if (error) throw error;
+                responseEl.textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                responseEl.textContent = 'Error: ' + error.message;
+            }
+        });
+    </script>
+</body>
+
+</html>
