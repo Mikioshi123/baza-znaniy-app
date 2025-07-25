@@ -1,6 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
 
     // --- НАСТРОЙКИ ---
+    // 🔴 Не забудьте вставить свои URL и ключ!
     const SUPABASE_URL = 'https://adyqqfkwgdzanpgsvzgl.supabase.co'; 
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFkeXFxZmt3Z2R6YW5wZ3N2emdsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE1NTM1NTgsImV4cCI6MjA2NzEyOTU1OH0.rfFekXWr933GcjA2JZQ2gvUObS3zuzctDQZvZfopP2g';
     // -----------------
@@ -11,6 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     
+    // Глобальные переменные для хранения всех данных
     let currentUser;
     let objectionsData = [];
     let userPersonalData = { notes: {}, ratings: {} };
@@ -18,6 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentFilter = 'all';
     let currentSearchTerm = '';
 
+    // --- ГЛАВНАЯ ФУНКЦИЯ ПРИЛОЖЕНИЯ ---
     async function main() {
         showLoader("Загрузка...");
         currentUser = tg.initDataUnsafe?.user;
@@ -27,9 +30,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
+            // 1. Авторизация
             const { data: authData, error: authError } = await supabaseClient.functions.invoke('check-and-add-employee', { body: { user: currentUser } });
             if (authError || !authData.accessGranted) throw new Error(authData.reason || "Доступ запрещен");
 
+            // 2. Загрузка всех данных параллельно
             showLoader("Загрузка данных...");
             const [personalDataRes, objectionsRes, gameDataRes] = await Promise.all([
                 supabaseClient.functions.invoke('get-user-data', { body: {} }),
@@ -45,7 +50,9 @@ document.addEventListener('DOMContentLoaded', () => {
             objectionsData = objectionsRes.data;
             gamificationData = gameDataRes.data;
 
+            // 3. Отрисовка основного макета
             renderMainLayout(currentUser.first_name, gamificationData.currentUser.mc_balance);
+            // По умолчанию показываем базу знаний
             renderKnowledgeBaseTab();
 
         } catch (error) {
@@ -54,6 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // --- ФУНКЦИИ УПРАВЛЕНИЯ ИНТЕРФЕЙСОМ ---
     function showLoader(text) { appContainer.innerHTML = `<div class="loader">${text}</div>`; }
     function showError(text) { appContainer.innerHTML = `<div class="error-screen"><h3>Ошибка</h3><p>${text}</p></div>`; }
 
@@ -86,6 +94,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // --- ФУНКЦИИ ОТРИСОВКИ ВКЛАДОК ---
     function renderKnowledgeBaseTab() {
         document.getElementById('tab-content').innerHTML = `
             <div class="controls">
@@ -140,11 +149,7 @@ document.addEventListener('DOMContentLoaded', () => {
         resultsContainer.innerHTML = '';
         if (!results || results.length === 0) {
             const searchTerm = currentSearchTerm;
-            resultsContainer.innerHTML = `
-                <div class="not-found-container">
-                    <p>По запросу "<strong>${searchTerm}</strong>" ничего не найдено.</p>
-                    <button class="action-btn" id="feedback-btn">Предложить свой вариант отработки</button>
-                </div>`;
+            resultsContainer.innerHTML = `<div class="not-found-container"><p>По запросу "<strong>${searchTerm}</strong>" ничего не найдено.</p><button class="action-btn" id="feedback-btn">Предложить свой вариант отработки</button></div>`;
             document.getElementById('feedback-btn')?.addEventListener('click', submitFeedback);
             return;
         }
@@ -166,6 +171,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setupCardInteractionListeners();
     }
     
+    // --- ФУНКЦИИ ДЛЯ РАБОТЫ С СЕРВЕРОМ ---
     async function saveData(objectionId, noteText, ratingValue) {
         try {
             await supabaseClient.functions.invoke('save-user-data', { body: { userId: currentUser.id, objectionId, note: noteText, rating: ratingValue } });
@@ -196,22 +202,31 @@ document.addEventListener('DOMContentLoaded', () => {
     async function submitFeedback() {
         const searchInput = document.getElementById('searchInput');
         const feedbackButton = document.getElementById('feedback-btn');
-        const searchTerm = searchInput.value;
+        const searchTerm = searchInput ? searchInput.value : currentSearchTerm;
+
         const comment = prompt('Опишите, какой отработки или функции вам не хватает.', '');
         if (!comment || comment.trim() === '') return;
-        feedbackButton.disabled = true;
-        feedbackButton.textContent = 'Отправка...';
+
+        if(feedbackButton) {
+            feedbackButton.disabled = true;
+            feedbackButton.textContent = 'Отправка...';
+        }
+
         try {
             await supabaseClient.functions.invoke('submit-feedback', {
                 body: { userId: currentUser.id, searchQuery: searchTerm, comment: comment }
             });
             tg.showAlert('Спасибо! Ваш отзыв отправлен.');
-            feedbackButton.textContent = '✅ Отправлено!';
+            if (feedbackButton) {
+                feedbackButton.textContent = '✅ Отправлено!';
+            }
         } catch (error) {
             console.error("Failed to submit feedback:", error);
             tg.showAlert('Произошла ошибка при отправке.');
-            feedbackButton.disabled = false;
-            feedbackButton.textContent = 'Предложить свой вариант отработки';
+            if (feedbackButton) {
+                feedbackButton.disabled = false;
+                feedbackButton.textContent = 'Предложить свой вариант отработки';
+            }
         }
     }
 
@@ -224,6 +239,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (gameDataRes.data) gamificationData = gameDataRes.data;
     }
 
+    // --- ФУНКЦИИ-СЛУШАТЕЛИ СОБЫТИЙ ---
     function setupCardInteractionListeners() {
         document.querySelectorAll('.rating-stars').forEach(starsContainer => {
             starsContainer.addEventListener('click', (e) => {
