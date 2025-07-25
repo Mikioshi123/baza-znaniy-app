@@ -10,8 +10,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const tg = window.Telegram.WebApp;
     tg.ready();
 
-    const { createClient } = supabase;
-    const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    // --- ИСПРАВЛЕНИЕ ЗДЕСЬ ---
+    // Создаем клиент, используя глобальный объект supabase, который точно существует
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    // --- КОНЕЦ ИСПРАВЛЕНИЯ ---
     
     let currentUser;
     let objectionsData = [];
