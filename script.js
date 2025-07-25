@@ -14,11 +14,12 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentUser;
     let objectionsData = [];
     let userPersonalData = { notes: {}, ratings: {} };
+    let gamificationData = { leaderboard: [], marketplaceItems: [], currentUser: {} };
     let currentFilter = 'all';
     let currentSearchTerm = '';
 
     async function main() {
-        showLoader("Проверка доступа...");
+        showLoader("Загрузка...");
         currentUser = tg.initDataUnsafe?.user;
         if (!currentUser?.id) {
             showError("Не удалось определить пользователя. Пожалуйста, запустите приложение через Telegram.");
@@ -30,19 +31,22 @@ document.addEventListener('DOMContentLoaded', () => {
             if (authError || !authData.accessGranted) throw new Error(authData.reason || "Доступ запрещен");
 
             showLoader("Загрузка данных...");
-            const [personalDataRes, objectionsRes] = await Promise.all([
+            const [personalDataRes, objectionsRes, gameDataRes] = await Promise.all([
                 supabaseClient.functions.invoke('get-user-data', { body: {} }),
-                supabaseClient.from('objections').select('*')
+                supabaseClient.from('objections').select('*'),
+                supabaseClient.functions.invoke('gamification-get-data', { body: { userId: currentUser.id } })
             ]);
             
             if (personalDataRes.error) throw personalDataRes.error;
             if (objectionsRes.error) throw objectionsRes.error;
+            if (gameDataRes.error) throw gameDataRes.error;
             
             userPersonalData = personalDataRes.data;
             objectionsData = objectionsRes.data;
+            gamificationData = gameDataRes.data;
 
-            renderMainInterface(currentUser.first_name);
-            performSearchAndRender();
+            renderMainLayout(currentUser.first_name, gamificationData.currentUser.mc_balance);
+            renderKnowledgeBaseTab();
 
         } catch (error) {
             console.error(error);
@@ -53,10 +57,37 @@ document.addEventListener('DOMContentLoaded', () => {
     function showLoader(text) { appContainer.innerHTML = `<div class="loader">${text}</div>`; }
     function showError(text) { appContainer.innerHTML = `<div class="error-screen"><h3>Ошибка</h3><p>${text}</p></div>`; }
 
-    function renderMainInterface(userName) {
+    function renderMainLayout(userName, balance) {
         if (tg.colorScheme) { document.body.className = tg.colorScheme; }
         appContainer.innerHTML = `
-            <h1>Привет, ${userName}!</h1><p>Поиск по возражениям</p>
+            <div class="header">
+                <h1>Привет, ${userName}!</h1>
+                <div class="balance-widget">
+                    <div class="amount">${balance || 0} MC</div>
+                    <div class="label">Ваш баланс</div>
+                </div>
+            </div>
+            <div class="tabs">
+                <button class="tab-btn active" data-tab="kb">База знаний</button>
+                <button class="tab-btn" data-tab="market">Магазин</button>
+                <button class="tab-btn" data-tab="rating">Рейтинг</button>
+            </div>
+            <div id="tab-content"></div>`;
+        
+        document.querySelectorAll('.tab-btn').forEach(button => {
+            button.addEventListener('click', (e) => {
+                document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+                e.target.classList.add('active');
+                const tab = e.target.dataset.tab;
+                if (tab === 'kb') renderKnowledgeBaseTab();
+                if (tab === 'market') renderMarketplaceTab();
+                if (tab === 'rating') renderRatingTab();
+            });
+        });
+    }
+
+    function renderKnowledgeBaseTab() {
+        document.getElementById('tab-content').innerHTML = `
             <div class="controls">
                 <input type="text" id="searchInput" placeholder="Введите ключевое слово для поиска...">
                 <div class="filters">
@@ -66,8 +97,42 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             </div>
             <div id="resultsContainer"></div>`;
-        
         setupStaticEventListeners();
+        performSearchAndRender();
+    }
+
+    function renderMarketplaceTab() {
+        const { marketplaceItems, currentUser } = gamificationData;
+        document.getElementById('tab-content').innerHTML = `
+            <div class="marketplace-grid">
+                ${marketplaceItems.map(item => `
+                    <div class="market-item-card">
+                        <div class="title">${item.title}</div>
+                        <p class="description">${item.description || ''}</p>
+                        <div class="footer">
+                            <span class="price">${item.price_mc} MC</span>
+                            <button class="action-btn" data-action="buy" data-item-id="${item.id}" data-item-price="${item.price_mc}" ${currentUser.mc_balance < item.price_mc ? 'disabled' : ''}>
+                                Купить
+                            </button>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>`;
+        setupMarketplaceListeners();
+    }
+
+    function renderRatingTab() {
+        const { leaderboard } = gamificationData;
+        document.getElementById('tab-content').innerHTML = `
+            <div class="leaderboard">
+                ${leaderboard.map((player, index) => `
+                    <div class="leaderboard-item">
+                        <div class="rank">#${index + 1}</div>
+                        <div class="name">${player.first_name || 'Аноним'}</div>
+                        <div class="score">${player.mc_balance} MC</div>
+                    </div>
+                `).join('')}
+            </div>`;
     }
 
     function renderResults(results) {
@@ -87,7 +152,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const record = item.item ? item.item : item;
             const card = document.createElement('div');
             card.className = 'item-card';
-            
             const objectionNotes = userPersonalData.notes[record.id] || [];
             const objectionRatings = userPersonalData.ratings[record.id] || [];
             const currentUserRatingObj = objectionRatings.find(r => r.authorId === currentUser.id);
@@ -96,24 +160,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const currentUserNote = currentUserNoteObj?.text || '';
             const othersNotesHTML = objectionNotes.filter(n => n.authorId !== currentUser.id).map(n => `<div class="note-item"><div class="note-author">${n.author || 'Аноним'} написал:</div><div class="note-text">${(n.text || '').replace(/\n/g, '<br>')}</div></div>`).join('');
             const averageRating = objectionRatings.length > 0 ? Math.round(objectionRatings.reduce((sum, r) => sum + r.value, 0) / objectionRatings.length) : 0;
-
-            card.innerHTML = `
-                <h3>${record.question} <span class="category-badge">${record.category}</span></h3>
-                <p>${record.answer ? record.answer.replace(/\n/g, '<br>') : ''}</p>
-                <div class="user-interaction">
-                    <h4>Ваш отзыв:</h4>
-                    <div class="rating-stars" data-objection-id="${record.id}">${[1, 2, 3, 4, 5].map(star => `<span class="star ${star <= currentUserRating ? 'filled' : ''}" data-value="${star}">★</span>`).join('')}</div>
-                    <textarea class="note-input" data-objection-id="${record.id}" placeholder="Ваша личная заметка...">${currentUserNote}</textarea>
-                    <div class="card-actions">
-                        <button class="action-btn" data-action="save" data-id="${record.id}">Подтвердить</button>
-                        ${(currentUserRatingObj || currentUserNoteObj) ? `<button class="action-btn delete" data-action="delete" data-id="${record.id}">Удалить мой отзыв</button>` : ''}
-                    </div>
-                </div>
-                <div class="public-feedback">
-                    <h4>Отзывы команды:</h4>
-                    <div class="average-rating">Общий рейтинг: ${[1, 2, 3, 4, 5].map(star => `<span class="star small ${star <= averageRating ? 'filled' : ''}">★</span>`).join('')} (${objectionRatings.length} оценок)</div>
-                    <div class="notes-list">${othersNotesHTML.length > 0 ? othersNotesHTML : '<p class="no-feedback">Пока нет других заметок.</p>'}</div>
-                </div>`;
+            card.innerHTML = `<h3>${record.question} <span class="category-badge">${record.category}</span></h3><p>${record.answer ? record.answer.replace(/\n/g, '<br>') : ''}</p><div class="user-interaction"><h4>Ваш отзыв:</h4><div class="rating-stars" data-objection-id="${record.id}">${[1, 2, 3, 4, 5].map(star => `<span class="star ${star <= currentUserRating ? 'filled' : ''}" data-value="${star}">★</span>`).join('')}</div><textarea class="note-input" data-objection-id="${record.id}" placeholder="Ваша личная заметка...">${currentUserNote}</textarea><div class="card-actions"><button class="action-btn" data-action="save" data-id="${record.id}">Подтвердить</button>${(currentUserRatingObj || currentUserNoteObj) ? `<button class="action-btn delete" data-action="delete" data-id="${record.id}">Удалить мой отзыв</button>` : ''}</div></div><div class="public-feedback"><h4>Отзывы команды:</h4><div class="average-rating">Общий рейтинг: ${[1, 2, 3, 4, 5].map(star => `<span class="star small ${star <= averageRating ? 'filled' : ''}">★</span>`).join('')} (${objectionRatings.length} оценок)</div><div class="notes-list">${othersNotesHTML.length > 0 ? othersNotesHTML : '<p class="no-feedback">Пока нет других заметок.</p>'}</div></div>`;
             resultsContainer.appendChild(card);
         });
         setupCardInteractionListeners();
@@ -123,8 +170,8 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             await supabaseClient.functions.invoke('save-user-data', { body: { userId: currentUser.id, objectionId, note: noteText, rating: ratingValue } });
             tg.showAlert('Ваш отзыв сохранен!');
-            await refreshPersonalData();
-            performSearchAndRender();
+            await refreshAllData();
+            renderKnowledgeBaseTab();
         } catch (error) {
             console.error("Failed to save data:", error);
             tg.showAlert('Ошибка сохранения.');
@@ -138,8 +185,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 supabaseClient.functions.invoke('delete-user-data', { body: { userId: currentUser.id, objectionId, type: 'rating' } })
             ]);
             tg.showAlert('Ваш отзыв удален.');
-            await refreshPersonalData();
-            performSearchAndRender();
+            await refreshAllData();
+            renderKnowledgeBaseTab();
         } catch(error) {
             console.error("Failed to delete data:", error);
             tg.showAlert('Ошибка удаления.');
@@ -150,13 +197,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const searchInput = document.getElementById('searchInput');
         const feedbackButton = document.getElementById('feedback-btn');
         const searchTerm = searchInput.value;
-
         const comment = prompt('Опишите, какой отработки или функции вам не хватает.', '');
         if (!comment || comment.trim() === '') return;
-
         feedbackButton.disabled = true;
         feedbackButton.textContent = 'Отправка...';
-
         try {
             await supabaseClient.functions.invoke('submit-feedback', {
                 body: { userId: currentUser.id, searchQuery: searchTerm, comment: comment }
@@ -171,10 +215,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    async function refreshPersonalData() {
-        const { data, error } = await supabaseClient.functions.invoke('get-user-data', { body: {} });
-        if (error) { console.error("Failed to refresh personal data:", error); return; }
-        userPersonalData = data;
+    async function refreshAllData() {
+        const [personalDataRes, gameDataRes] = await Promise.all([
+            supabaseClient.functions.invoke('get-user-data', { body: {} }),
+            supabaseClient.functions.invoke('gamification-get-data', { body: { userId: currentUser.id } })
+        ]);
+        if (personalDataRes.data) userPersonalData = personalDataRes.data;
+        if (gameDataRes.data) gamificationData = gameDataRes.data;
     }
 
     function setupCardInteractionListeners() {
@@ -216,6 +263,35 @@ document.addEventListener('DOMContentLoaded', () => {
                 e.target.classList.add('active');
                 currentFilter = e.target.dataset.filter;
                 performSearchAndRender();
+            });
+        });
+    }
+
+    function setupMarketplaceListeners() {
+        document.querySelectorAll('.action-btn[data-action="buy"]').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const itemId = e.target.dataset.itemId;
+                const itemPrice = parseInt(e.target.dataset.itemPrice);
+                tg.showConfirm(`Вы уверены, что хотите купить этот товар за ${itemPrice} MC?`, async (confirmed) => {
+                    if (confirmed) {
+                        try {
+                            e.target.disabled = true;
+                            e.target.textContent = 'Обработка...';
+                            const { data, error } = await supabaseClient.functions.invoke('gamification-purchase-item', {
+                                body: { userId: currentUser.id, itemId: itemId }
+                            });
+                            if (error) throw error;
+                            tg.showAlert('Покупка совершена! Администратор скоро свяжется с вами.');
+                            gamificationData.currentUser.mc_balance = data.newBalance;
+                            renderMainLayout(currentUser.first_name, gamificationData.currentUser.mc_balance);
+                            renderMarketplaceTab();
+                        } catch (err) {
+                            tg.showAlert(`Ошибка покупки: ${err.message}`);
+                            e.target.disabled = false;
+                            e.target.textContent = 'Купить';
+                        }
+                    }
+                });
             });
         });
     }
