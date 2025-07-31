@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>База знаний</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+
+<body>
+
+    <div class="app-container">
+        <header class="app-header">
+            <div class="tabs">
+                <button class="tab-btn active" data-tab="knowledge-base">База знаний</button>
+                <button class="tab-btn" data-tab="gamification">Задания и Призы</button>
+            </div>
+        </header>
+
+        <main class="app-content">
+            <div class="tab-panel active" id="knowledge-base-panel">
+                <!-- Сюда будет рендериться база знаний -->
+            </div>
+            <div class="tab-panel" id="gamification-panel">
+                <!-- Сюда будет рендериться страница геймификации -->
+            </div>
+        </main>
+    </div>
+
+    <!-- Библиотеки -->
+    <script src="https://cdn.jsdelivr.net/npm/fuse.js/dist/fuse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Основной скрипт -->
+    <script src="script.js"></script>
+</body>
+
+</html>
