@@ -1,7 +1,10 @@
 document.addEventListener('DOMContentLoaded', () => {
 
+    // --- НАСТРОЙКИ ---
+    // 🔴 Не забудьте вставить свои URL и ключ!
     const SUPABASE_URL = 'https://adyqqfkwgdzanpgsvzgl.supabase.co'; 
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFkeXFxZmt3Z2R6YW5wZ3N2emdsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE1NTM1NTgsImV4cCI6MjA2NzEyOTU1OH0.rfFekXWr933GcjA2JZQ2gvUObS3zuzctDQZvZfopP2g';
+    // -----------------
 
     const appContainer = document.getElementById('appContainer');
     const tg = window.Telegram.WebApp;
@@ -163,7 +166,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             await supabaseClient.functions.invoke('submit-feedback', {
-                body: { userId: currentUser.id, searchQuery: searchTerm, comment: comment }
+                body: { userId: currentUser.id, searchQuery: searchTerm, comment: comment, user: currentUser }
             });
             const notFoundContainer = document.querySelector('.not-found-container');
             if (notFoundContainer) {
