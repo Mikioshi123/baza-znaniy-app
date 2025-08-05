@@ -1,9 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
 
-    // --- НАСТРОЙКИ ---
     const SUPABASE_URL = 'https://adyqqfkwgdzanpgsvzgl.supabase.co'; 
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFkeXFxZmt3Z2R6YW5wZ3N2emdsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE1NTM1NTgsImV4cCI6MjA2NzEyOTU1OH0.rfFekXWr933GcjA2JZQ2gvUObS3zuzctDQZvZfopP2g';
-    // -----------------
 
     const appContainer = document.getElementById('appContainer');
     const tg = window.Telegram.WebApp;
@@ -78,9 +76,10 @@ document.addEventListener('DOMContentLoaded', () => {
             resultsContainer.innerHTML = `
                 <div class="not-found-container">
                     <p>По запросу "<strong>${searchTerm}</strong>" ничего не найдено.</p>
-                    <button class="action-btn" id="feedback-btn">Предложить свой вариант отработки</button>
+                    <textarea id="feedback-comment" class="note-input" placeholder="Предложите свой вариант отработки или опишите, что искали..."></textarea>
+                    <button class="action-btn" id="feedback-submit-btn">Отправить на доработку</button>
                 </div>`;
-            document.getElementById('feedback-btn')?.addEventListener('click', submitFeedback);
+            document.getElementById('feedback-submit-btn')?.addEventListener('click', submitFeedback);
             return;
         }
         results.forEach(item => {
@@ -148,32 +147,33 @@ document.addEventListener('DOMContentLoaded', () => {
     
     async function submitFeedback() {
         const searchInput = document.getElementById('searchInput');
-        const feedbackButton = document.getElementById('feedback-btn');
+        const commentInput = document.getElementById('feedback-comment');
+        const submitButton = document.getElementById('feedback-submit-btn');
+        
         const searchTerm = searchInput.value;
+        const comment = commentInput.value;
 
-        const comment = prompt('Опишите, какой отработки или функции вам не хватает.', '');
-        if (!comment || comment.trim() === '') return;
-
-        if(feedbackButton) {
-            feedbackButton.disabled = true;
-            feedbackButton.textContent = 'Отправка...';
+        if (!comment || comment.trim() === '') {
+            tg.showAlert('Пожалуйста, заполните поле для отзыва.');
+            return;
         }
+
+        submitButton.disabled = true;
+        submitButton.textContent = 'Отправка...';
 
         try {
             await supabaseClient.functions.invoke('submit-feedback', {
                 body: { userId: currentUser.id, searchQuery: searchTerm, comment: comment }
             });
-            tg.showAlert('Спасибо! Ваш отзыв отправлен.');
-            if (feedbackButton) {
-                feedbackButton.textContent = '✅ Отправлено!';
+            const notFoundContainer = document.querySelector('.not-found-container');
+            if (notFoundContainer) {
+                notFoundContainer.innerHTML = '<p>✅ Спасибо! Ваш отзыв отправлен.</p>';
             }
         } catch (error) {
             console.error("Failed to submit feedback:", error);
             tg.showAlert('Произошла ошибка при отправке.');
-            if (feedbackButton) {
-                feedbackButton.disabled = false;
-                feedbackButton.textContent = 'Предложить свой вариант отработки';
-            }
+            submitButton.disabled = false;
+            submitButton.textContent = 'Отправить на доработку';
         }
     }
 
